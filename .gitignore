@@ -4,3 +4,7 @@ dist/
 .env.local
 *.log
 .DS_Store
+# Runtime state: chosen context folder + on/off flag
+.free-llm-api-state.json
+# Local transcript output if the gateway runs inside this repo
+llm-context/

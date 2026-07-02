@@ -83,3 +83,49 @@ export const sendChat = async (messages: ChatMessage[]): Promise<ChatResult> => 
   const content = data.choices?.[0]?.message?.content ?? ''
   return { content, provider, model: data.model ?? null, complexity }
 }
+
+// ---- Folder picker + context settings (server-side filesystem) ----
+
+export interface DirEntry {
+  name: string
+  path: string
+}
+
+export interface DirListing {
+  path: string
+  parent: string | null
+  entries: DirEntry[]
+}
+
+export interface ContextState {
+  folder: string | null
+  enabled: boolean
+}
+
+const authedJson = async <T>(url: string, init?: RequestInit): Promise<T> => {
+  const res = await fetch(url, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...init?.headers },
+  })
+  if (res.status === 401) throw new AuthError()
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null)
+    const message =
+      (detail as { error?: { message?: string } })?.error?.message ||
+      `request failed (${res.status})`
+    throw new Error(message)
+  }
+  return (await res.json()) as T
+}
+
+export const listDir = (path?: string): Promise<DirListing> =>
+  authedJson<DirListing>(`/fs/list${path ? `?path=${encodeURIComponent(path)}` : ''}`)
+
+export const getContextConfig = (): Promise<ContextState> =>
+  authedJson<ContextState>('/config/context')
+
+export const setContextConfig = (patch: {
+  folder?: string | null
+  enabled?: boolean
+}): Promise<ContextState> =>
+  authedJson<ContextState>('/config/context', { method: 'POST', body: JSON.stringify(patch) })

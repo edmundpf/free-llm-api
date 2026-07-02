@@ -4,9 +4,12 @@ import { AppConfig } from './config'
 import { createRateLimitTracker } from './rateLimit/tracker'
 import { createDispatcher } from './core/dispatcher'
 import { requireAuth } from './middleware/auth'
+import { createContextStore } from './context/store'
 import { makeChatCompletionsHandler } from './routes/chatCompletions'
 import { makeModelsHandler, makeStatusHandler } from './routes/models'
 import { makeLoginHandler, makeMeHandler } from './routes/auth'
+import { makeFsListHandler } from './routes/fs'
+import { makeGetContextHandler, makeSetContextHandler } from './routes/context'
 import { logger } from './utils/logger'
 
 // Assembles the Express app: it serves the built React PWA, exposes the login
@@ -22,6 +25,7 @@ export const createServer = (config: AppConfig) => {
 
   const tracker = createRateLimitTracker()
   const dispatcher = createDispatcher(config, tracker)
+  const contextStore = createContextStore(config.context)
   const guard = requireAuth(config.auth)
 
   // Public: health + login + static PWA assets.
@@ -32,12 +36,23 @@ export const createServer = (config: AppConfig) => {
   app.get('/auth/me', guard, makeMeHandler())
   app.get('/v1/models', guard, makeModelsHandler(config))
   app.get('/status', guard, makeStatusHandler(config, tracker))
-  app.post('/v1/chat/completions', guard, makeChatCompletionsHandler(dispatcher))
+  app.post('/v1/chat/completions', guard, makeChatCompletionsHandler(dispatcher, contextStore.record))
+
+  // Folder picker + context settings for the "let Claude see my prompts" feature.
+  app.get('/fs/list', guard, makeFsListHandler())
+  app.get('/config/context', guard, makeGetContextHandler(contextStore))
+  app.post('/config/context', guard, makeSetContextHandler(contextStore))
 
   // Serve the PWA and fall back to index.html for client-side routing.
   app.use(express.static(webDir))
   app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/v1') || req.path.startsWith('/auth') || req.path === '/status') {
+    if (
+      req.path.startsWith('/v1') ||
+      req.path.startsWith('/auth') ||
+      req.path.startsWith('/fs') ||
+      req.path.startsWith('/config') ||
+      req.path === '/status'
+    ) {
       next()
       return
     }

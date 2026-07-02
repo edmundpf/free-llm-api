@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import path from 'node:path'
 import dotenv from 'dotenv'
 import { ProviderConfig } from './types'
 import { logger } from './utils/logger'
@@ -101,10 +102,21 @@ export interface AuthConfig {
   jwtExpiresIn: string
 }
 
+// Where the gateway writes the transcript of free-API interactions so Claude,
+// working in the same repo folder, can see them. The active folder is chosen at
+// runtime via the PWA and persisted to stateFile.
+export interface ContextConfig {
+  stateFile: string
+  // Optional seed folder from CONTEXT_DIR when no state has been saved yet.
+  defaultDir: string
+  maxEntries: number
+}
+
 export interface AppConfig {
   port: number
   host: string
   auth: AuthConfig
+  context: ContextConfig
   providers: ProviderConfig[]
   // Cap on how many providers the dispatcher will try for one request.
   maxAttempts: number
@@ -145,6 +157,11 @@ export const loadConfig = (): AppConfig => {
     port: num(process.env.PORT, 8787),
     host: str(process.env.HOST, '0.0.0.0'),
     auth: buildAuth(),
+    context: {
+      stateFile: str(process.env.STATE_FILE, path.join(process.cwd(), '.free-llm-api-state.json')),
+      defaultDir: str(process.env.CONTEXT_DIR, ''),
+      maxEntries: num(process.env.CONTEXT_MAX_ENTRIES, 50),
+    },
     providers,
     maxAttempts: num(process.env.MAX_ATTEMPTS, providers.length),
     requestTimeoutMs: num(process.env.REQUEST_TIMEOUT_MS, 120_000),

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LogOut, Send, Sunset } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import SettingsDialog from '@/components/SettingsDialog'
 import MessageBubble, { type UiMessage } from '@/components/MessageBubble'
 import { AuthError, sendChat, type ChatMessage } from '@/lib/api'
 
@@ -109,6 +110,7 @@ const ChatScreen = ({ onLogout }: Props) => {
           <Button variant="ghost" size="sm" onClick={clear} disabled={messages.length === 0}>
             Clear
           </Button>
+          <SettingsDialog onAuthError={onLogout} />
           <Button variant="ghost" size="icon" onClick={onLogout} aria-label="Log out">
             <LogOut className="h-5 w-5" />
           </Button>

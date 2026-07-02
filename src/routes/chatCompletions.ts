@@ -1,8 +1,27 @@
 import { Request, Response } from 'express'
 import { Readable } from 'node:stream'
 import { Dispatcher, AllProvidersExhaustedError } from '../core/dispatcher'
-import { ChatCompletionRequest } from '../types'
+import { ChatCompletionRequest, ChatMessage } from '../types'
+import { Interaction } from '../context/transcript'
 import { logger } from '../utils/logger'
+
+// Recorder callback the handler uses to persist an interaction for Claude to
+// read. It's fire-and-forget on the store side.
+export type RecordFn = (entry: Interaction) => void
+
+// Flatten a message's content down to plain text for the transcript.
+const messageText = (m: ChatMessage): string => {
+  if (typeof m.content === 'string') return m.content
+  if (Array.isArray(m.content)) return m.content.map((p) => p.text || '').join(' ')
+  return ''
+}
+
+const lastUserPrompt = (messages: ChatMessage[]): string => {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') return messageText(messages[i])
+  }
+  return ''
+}
 
 // POST /v1/chat/completions — the single OpenAI-style endpoint. It delegates
 // provider selection and failover to the dispatcher, then either streams the
@@ -43,7 +62,7 @@ const streamResponse = async (
   }
 }
 
-export const makeChatCompletionsHandler = (dispatcher: Dispatcher) =>
+export const makeChatCompletionsHandler = (dispatcher: Dispatcher, record: RecordFn) =>
   async (req: Request, res: Response): Promise<void> => {
     const body = req.body as ChatCompletionRequest
 
@@ -60,11 +79,32 @@ export const makeChatCompletionsHandler = (dispatcher: Dispatcher) =>
       for (const [k, v] of Object.entries(headers)) res.setHeader(k, v)
 
       if (body.stream) {
+        // The reply body is piped straight through, so we log the prompt and the
+        // chosen provider but leave the reply for the transcript to mark uncaptured.
+        record({
+          time: new Date().toISOString(),
+          provider: result.provider.id,
+          model: result.provider.model,
+          tier: result.complexity.tier,
+          prompt: lastUserPrompt(body.messages),
+          reply: '',
+        })
         await streamResponse(result.response, res)
         return
       }
 
-      const json = await result.response.json()
+      const json = (await result.response.json()) as {
+        model?: string
+        choices?: { message?: { content?: string } }[]
+      }
+      record({
+        time: new Date().toISOString(),
+        provider: result.provider.id,
+        model: json.model ?? result.provider.model,
+        tier: result.complexity.tier,
+        prompt: lastUserPrompt(body.messages),
+        reply: json.choices?.[0]?.message?.content ?? '',
+      })
       res.status(200).json(json)
     } catch (e) {
       if (e instanceof AllProvidersExhaustedError) {
