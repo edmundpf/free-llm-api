@@ -85,6 +85,13 @@ reach that filesystem). The gateway then writes every interaction into
 
 Point that at a repo Claude works in and it picks up the recent free-API context.
 
+- **Claude runs locally** (Claude Code / Desktop on the same machine): the
+  working-tree files are enough — nothing else to do.
+- **Claude on the web** (claude.ai/code reads the repo from GitHub): set
+  `CONTEXT_GIT_SYNC=true` and the gateway will commit & push `llm-context/`
+  (debounced) so the web session sees it. The folder must be a git repo with a
+  push remote.
+
 ## Usage (raw API)
 
 Point any OpenAI client at the gateway. Use `model: "auto"` to let the router
@@ -134,8 +141,9 @@ what served each request.
 All knobs live in `.env` (see `.env.example`): per-provider `*_API_KEY`,
 `*_MODEL`, `*_BASE_URL`, `*_WEIGHT`, `*_COMPLEXITY_WEIGHT`, `*_COOLDOWN_MS`;
 auth `PWA_EMAIL`, `PWA_PASS`, `JWT_SECRET`, `JWT_EXPIRES_IN`; context
-`STATE_FILE`, `CONTEXT_DIR`, `CONTEXT_MAX_ENTRIES`; and gateway `PORT`, `HOST`,
-`MAX_ATTEMPTS`, `REQUEST_TIMEOUT_MS`.
+`STATE_FILE`, `CONTEXT_DIR`, `CONTEXT_MAX_ENTRIES`, `CONTEXT_GIT_SYNC`,
+`CONTEXT_GIT_DEBOUNCE_MS`; and gateway `PORT`, `HOST`, `MAX_ATTEMPTS`,
+`REQUEST_TIMEOUT_MS`.
 
 ## Layout
 
