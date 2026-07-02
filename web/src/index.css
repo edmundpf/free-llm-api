@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Miami nightlife / sunset palette: neon pink + magenta + sunset orange over a
+   deep purple night sky, with a cyan hint. Dark-only. */
+@layer base {
+  :root {
+    --background: 265 55% 7%;
+    --foreground: 30 40% 96%;
+
+    --card: 268 46% 11%;
+    --card-foreground: 30 40% 96%;
+
+    --primary: 328 92% 62%; /* hot pink */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 275 48% 22%; /* purple */
+    --secondary-foreground: 30 40% 96%;
+
+    --muted: 270 30% 17%;
+    --muted-foreground: 300 22% 74%;
+
+    --accent: 24 96% 58%; /* sunset orange */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 356 82% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 292 40% 24%;
+    --input: 292 38% 26%;
+    --ring: 328 92% 62%;
+
+    --radius: 1rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    /* Sunset glow rising from the bottom, purple night up top, cyan hint. */
+    background-image:
+      radial-gradient(1200px 620px at 50% 118%, hsl(24 96% 55% / 0.38), transparent 60%),
+      radial-gradient(900px 520px at 12% 105%, hsl(328 92% 62% / 0.32), transparent 55%),
+      radial-gradient(1000px 620px at 100% -5%, hsl(278 82% 48% / 0.34), transparent 55%),
+      radial-gradient(760px 480px at -5% 0%, hsl(190 90% 52% / 0.14), transparent 52%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    /* iOS safe-area padding for the notch / home indicator. */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+}
+
+@layer components {
+  .sunset-gradient {
+    background-image: linear-gradient(
+      135deg,
+      hsl(24 96% 58%) 0%,
+      hsl(328 92% 62%) 52%,
+      hsl(278 84% 62%) 100%
+    );
+  }
+
+  .sunset-text {
+    background-image: linear-gradient(
+      120deg,
+      hsl(24 96% 62%),
+      hsl(328 92% 66%) 55%,
+      hsl(280 90% 72%)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Frosted panel used for the header, message bubbles and input bar. */
+  .glass {
+    background-color: hsl(268 46% 11% / 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+/* Slim, tinted scrollbar to match the theme. */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: hsl(292 40% 30% / 0.7);
+  border-radius: 9999px;
+}

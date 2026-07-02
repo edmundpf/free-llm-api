@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import dotenv from 'dotenv'
 import { ProviderConfig } from './types'
 import { logger } from './utils/logger'
@@ -89,15 +90,45 @@ const buildProviders = (): ProviderConfig[] => {
   )
 }
 
+// Auth for the gateway itself. The single PWA user logs in with PWA_EMAIL and
+// the base64-decoded PWA_PASS, and receives a JWT that is then required on every
+// API call.
+export interface AuthConfig {
+  email: string
+  // base64-encoded; the real password is decode(passwordEncoded).
+  passwordEncoded: string
+  jwtSecret: string
+  jwtExpiresIn: string
+}
+
 export interface AppConfig {
   port: number
   host: string
-  // A bearer token clients must present to this gateway. Empty = open.
-  apiKey: string
+  auth: AuthConfig
   providers: ProviderConfig[]
   // Cap on how many providers the dispatcher will try for one request.
   maxAttempts: number
   requestTimeoutMs: number
+}
+
+const buildAuth = (): AuthConfig => {
+  let jwtSecret = str(process.env.JWT_SECRET, '')
+  if (!jwtSecret) {
+    // Without a fixed secret we can still run, but tokens die on restart.
+    jwtSecret = crypto.randomBytes(32).toString('hex')
+    logger.warn('JWT_SECRET not set; generated an ephemeral secret (sessions will not survive a restart)')
+  }
+  const email = str(process.env.PWA_EMAIL, '')
+  const passwordEncoded = str(process.env.PWA_PASS, '')
+  if (!email || !passwordEncoded) {
+    logger.warn('PWA_EMAIL or PWA_PASS not set; login is disabled until both are configured')
+  }
+  return {
+    email,
+    passwordEncoded,
+    jwtSecret,
+    jwtExpiresIn: str(process.env.JWT_EXPIRES_IN, '30d'),
+  }
 }
 
 export const loadConfig = (): AppConfig => {
@@ -113,7 +144,7 @@ export const loadConfig = (): AppConfig => {
   return {
     port: num(process.env.PORT, 8787),
     host: str(process.env.HOST, '0.0.0.0'),
-    apiKey: str(process.env.GATEWAY_API_KEY, ''),
+    auth: buildAuth(),
     providers,
     maxAttempts: num(process.env.MAX_ATTEMPTS, providers.length),
     requestTimeoutMs: num(process.env.REQUEST_TIMEOUT_MS, 120_000),
