@@ -2,6 +2,7 @@ import { promises as fs, readFileSync } from 'node:fs'
 import { ContextConfig } from '../config'
 import { isWritableDirectory } from '../fs/browse'
 import { appendInteraction, Interaction } from './transcript'
+import { createGitSyncer } from './gitSync'
 import { logger } from '../utils/logger'
 
 // Holds the runtime context settings — which folder to write the transcript
@@ -36,6 +37,7 @@ const loadInitial = (config: ContextConfig): ContextState => {
 
 export const createContextStore = (config: ContextConfig): ContextStore => {
   let state = loadInitial(config)
+  const syncer = createGitSyncer({ enabled: config.gitSync, debounceMs: config.gitDebounceMs })
 
   const persist = async (): Promise<void> => {
     try {
@@ -75,9 +77,11 @@ export const createContextStore = (config: ContextConfig): ContextStore => {
   const record = (entry: Interaction): void => {
     if (!state.enabled || !state.folder) return
     const folder = state.folder
-    appendInteraction(folder, entry, config.maxEntries).catch((e) =>
-      logger.warn('failed to write context transcript', { folder, message: String(e) }),
-    )
+    appendInteraction(folder, entry, config.maxEntries)
+      .then(() => syncer.schedule(folder))
+      .catch((e) =>
+        logger.warn('failed to write context transcript', { folder, message: String(e) }),
+      )
   }
 
   return { getState, setState, record }

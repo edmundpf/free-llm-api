@@ -110,6 +110,9 @@ export interface ContextConfig {
   // Optional seed folder from CONTEXT_DIR when no state has been saved yet.
   defaultDir: string
   maxEntries: number
+  // Optional: commit & push the transcript so Claude on the web can read it.
+  gitSync: boolean
+  gitDebounceMs: number
 }
 
 export interface AppConfig {
@@ -161,6 +164,8 @@ export const loadConfig = (): AppConfig => {
       stateFile: str(process.env.STATE_FILE, path.join(process.cwd(), '.free-llm-api-state.json')),
       defaultDir: str(process.env.CONTEXT_DIR, ''),
       maxEntries: num(process.env.CONTEXT_MAX_ENTRIES, 50),
+      gitSync: str(process.env.CONTEXT_GIT_SYNC, '').toLowerCase() === 'true',
+      gitDebounceMs: num(process.env.CONTEXT_GIT_DEBOUNCE_MS, 15_000),
     },
     providers,
     maxAttempts: num(process.env.MAX_ATTEMPTS, providers.length),
